@@ -1,0 +1,10 @@
+.vscode/
+out/
+*.exe
+*.out
+*.o
+.iml/
+.idea/
+
+
+
