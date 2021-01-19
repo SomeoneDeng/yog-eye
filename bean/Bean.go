@@ -35,8 +35,8 @@ func (is *EyeServer) TargetInfoReport(ts targetinfo.TargetService_TargetInfoRepo
 	for {
 		ti, err := ts.Recv()
 		if err != nil {
-			log.Println(err.Error())
-			break
+			time.Sleep(time.Second * 10)
+			log.Fatalln(err.Error())
 		}
 		// log.Println("from --> ", ti.HostKey, " --> ", ti.GetCPUpr())
 
@@ -49,23 +49,20 @@ func (is *EyeServer) TargetInfoReport(ts targetinfo.TargetService_TargetInfoRepo
 			Message: strconv.Itoa((int(ti.GetCPUs()) + 1)),
 		})
 	}
-
-	return nil
 }
 
 func (es *EyeServer) TargetHeartBeat(hb targetinfo.TargetService_TargetHeartBeatServer) error {
 	for {
 		hearBeat, err := hb.Recv()
 		if err != nil {
-			log.Println(err.Error())
-			break
+			time.Sleep(time.Second * 10)
+			log.Fatalln(err.Error())
 		}
 		// log.Println("收到心跳 --> ", hearBeat.GetHostKey(), "[", hearBeat.GetBeatTime(), "]")
 		es.HeartBeatMap[hearBeat.GetHostKey()] = hearBeat.GetBeatTime()
 		hearBeat.BeatTime = time.Now().Unix()
 		hb.Send(hearBeat)
 	}
-	return nil
 }
 
 func (is *EyeServer) readConfig(config string) {

@@ -49,7 +49,8 @@ func (c *Client) InitClient(config string) {
 	log.Println("「client start」")
 	conn, err := grpc.Dial(c.ClientConf.ServPort, grpc.WithInsecure())
 	if err != nil {
-		return
+		time.Sleep(time.Second * 10)
+		log.Fatalln(err.Error())
 	}
 	defer conn.Close()
 	tc := targetinfo.NewTargetServiceClient(conn)
@@ -172,8 +173,8 @@ func (c *Client) InfoPushResultRecv(allStr targetinfo.TargetService_TargetInfoRe
 	for {
 		_, err := allStr.Recv()
 		if err != nil {
-			log.Println(err.Error())
-			break
+			time.Sleep(time.Second * 10)
+			log.Fatalln(err.Error())
 		}
 		// log.Println("recv --> ", resp.GetMessage())
 	}
@@ -202,8 +203,8 @@ func (c *Client) HeartBeatResultRecv(hc targetinfo.TargetService_TargetHeartBeat
 		// log.Println("hc -->", hc)
 		_, err := hc.Recv()
 		if err != nil {
-			log.Println(err.Error())
-			break
+			time.Sleep(time.Second * 10)
+			log.Fatalln(err.Error())
 		}
 		// log.Println(hb.String())
 	}
