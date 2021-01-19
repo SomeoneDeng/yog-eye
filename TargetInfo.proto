@@ -1,0 +1,59 @@
+syntax = "proto3";
+ 
+// user 包
+package targetinfo;
+
+// 指定 go 的包路径及包名
+option go_package="./targetinfo";
+
+// User 服务及服务接口的定义
+service TargetService {
+    rpc TargetInfoReport(stream TargetInfo) returns (stream Response) {}
+    // rpc TargetPush(TargetInfo) returns (stream TargetInfo) {}
+    rpc TargetHeartBeat(stream HeartBeat) returns (stream HeartBeat) {}
+}
+
+message HeartBeat {
+    int64 BeatTime = 1;
+    string HostKey = 2;
+}
+
+message DiskStatus {
+    int64 ReadBytes = 1;
+    int64 WriteBytes = 2;
+    int64 ReadCount = 3;
+    int64 WriteCount = 4;
+    string Name = 5;
+}
+
+message NetIoCount {
+    int64 ByteSend = 1;
+    int64 BytesRecv = 2;
+}
+
+message TargetInfo {
+    string HostName = 1;
+    int32 CPUs = 2;
+    repeated float CPUpr = 3;
+    int64 Uptime = 4;
+    int64 BootTime = 5;
+    string OS = 6;
+
+    int64 TotalMem = 7;
+    int64 AvailableMem = 8;
+    int64 UsedMem = 9;
+    float UsedPercentMem = 10;
+    int64 FreeMem = 11;
+
+    int64 TotalDisk = 12;
+    int64 FreeDisk = 13;
+    int64 UsedDisk = 14;
+    int64 UsedPercentDisk = 15;
+    repeated DiskStatus DiskStatus = 16;
+    NetIoCount NetIoCount = 17;
+}
+
+message Response {
+    int32 Response = 1;
+    string Message = 2;
+}
