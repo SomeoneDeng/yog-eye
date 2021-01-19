@@ -66,6 +66,7 @@ func (c *Client) InfoPushInit(tc targetinfo.TargetServiceClient) {
 	}
 	go c.InfoPushResultRecv(allStr)
 	for {
+		cpus, _ := cpu.Counts(true)
 		// cpu
 		percents, _ := cpu.Percent(time.Second, true)
 		var prs []float32
@@ -111,7 +112,7 @@ func (c *Client) InfoPushInit(tc targetinfo.TargetServiceClient) {
 			OS:             hosts.OS,
 			Uptime:         int64(hosts.Uptime),
 			BootTime:       int64(hosts.BootTime),
-			CPUs:           int32(time.Now().Second()),
+			CPUs:           int32(cpus),
 			CPUpr:          prs,
 			TotalMem:       int64(mems.Total),
 			AvailableMem:   int64(mems.Available),
@@ -123,10 +124,10 @@ func (c *Client) InfoPushInit(tc targetinfo.TargetServiceClient) {
 			UsedDisk:        int64(disks.Used),
 			UsedPercentDisk: int64(disks.UsedPercent),
 			FreeDisk:        int64(disks.Free),
+			DiskStatus:      diskS,
+			NetIoCount:      netInfo,
 
-			DiskStatus: diskS,
-
-			NetIoCount: netInfo,
+			HostKey: c.ClientConf.ClientKey,
 		}
 		allStr.Send(&ti)
 		time.Sleep(time.Second * 10)
@@ -136,7 +137,11 @@ func (c *Client) InfoPushInit(tc targetinfo.TargetServiceClient) {
 // InfoPushResultRecv result
 func (c *Client) InfoPushResultRecv(allStr targetinfo.TargetService_TargetInfoReportClient) {
 	for {
-		resp, _ := allStr.Recv()
+		resp, err := allStr.Recv()
+		if err != nil {
+			log.Println(err.Error())
+			break
+		}
 		log.Println("recv --> ", resp.GetMessage())
 	}
 }
@@ -162,7 +167,11 @@ func (c *Client) HeartBeatInit(tc targetinfo.TargetServiceClient) {
 func (c *Client) HeartBeatResultRecv(hc targetinfo.TargetService_TargetHeartBeatClient) {
 	for {
 		// log.Println("hc -->", hc)
-		hb, _ := hc.Recv()
+		hb, err := hc.Recv()
+		if err != nil {
+			log.Println(err.Error())
+			break
+		}
 		log.Println(hb.String())
 	}
 }

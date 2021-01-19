@@ -33,7 +33,9 @@ message NetIoCount {
 
 message TargetInfo {
     string HostName = 1;
+    // logic cpus
     int32 CPUs = 2;
+    // cpu percents
     repeated float CPUpr = 3;
     int64 Uptime = 4;
     int64 BootTime = 5;
@@ -51,6 +53,8 @@ message TargetInfo {
     int64 UsedPercentDisk = 15;
     repeated DiskStatus DiskStatus = 16;
     NetIoCount NetIoCount = 17;
+
+    string HostKey = 18;
 }
 
 message Response {
