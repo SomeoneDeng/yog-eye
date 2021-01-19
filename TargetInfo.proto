@@ -54,7 +54,11 @@ message TargetInfo {
     repeated DiskStatus DiskStatus = 16;
     NetIoCount NetIoCount = 17;
 
-    string HostKey = 18;
+    string Ip = 18;
+    string IpCountry = 19;
+    string IpRegion = 20;
+
+    string HostKey = 21;
 }
 
 message Response {

@@ -2,9 +2,11 @@ package main
 
 import (
 	"context"
+	"encoding/json"
 	"flag"
 	"io/ioutil"
 	"log"
+	"net/http"
 	"time"
 	"yogeye/targetinfo"
 
@@ -78,21 +80,48 @@ func (c *Client) InfoPushInit(tc targetinfo.TargetServiceClient) {
 
 		// memories
 		mems, _ := mem.VirtualMemory()
-		log.Println(mems)
+		// log.Println(mems)
 
 		// disk
 		disks, _ := disk.Usage("/")
 		diskc, _ := disk.IOCounters()
 
-		log.Println(diskc)
+		// log.Println(diskc)
 
 		ioc, _ := net.IOCounters(false)
-		log.Println(ioc)
+		// log.Println(ioc)
 		var netInfo *targetinfo.NetIoCount
 		if len(ioc) > 0 {
 			netInfo = &targetinfo.NetIoCount{
 				ByteSend:  int64(ioc[0].BytesSent),
 				BytesRecv: int64(ioc[0].BytesRecv),
+			}
+		}
+
+		resp, httpErr := http.Get("http://ip-api.com/json/?lang=zh-CN")
+		var ipS struct {
+			Status      string  `json:"status"`
+			Country     string  `json:"country"`
+			CountryCode string  `json:"countryCode"`
+			Region      string  `json:"region"`
+			RegionName  string  `json:"regionName"`
+			City        string  `json:"city"`
+			Zip         string  `json:"zip"`
+			Lat         float64 `json:"lat"`
+			Lon         float64 `json:"lon"`
+			Timezone    string  `json:"timezone"`
+			Isp         string  `json:"isp"`
+			Org         string  `json:"org"`
+			As          string  `json:"as"`
+			Query       string  `json:"query"`
+		}
+		if httpErr != nil {
+			log.Println("获取ip错误-> ", httpErr.Error())
+		} else {
+			buffer, _ := ioutil.ReadAll(resp.Body)
+			err = json.Unmarshal(buffer, &ipS)
+			if err != nil {
+				log.Println("获取ip错误-> ", err.Error())
 			}
 		}
 
@@ -127,6 +156,10 @@ func (c *Client) InfoPushInit(tc targetinfo.TargetServiceClient) {
 			DiskStatus:      diskS,
 			NetIoCount:      netInfo,
 
+			Ip:        ipS.Query,
+			IpCountry: ipS.Country,
+			IpRegion:  ipS.RegionName,
+
 			HostKey: c.ClientConf.ClientKey,
 		}
 		allStr.Send(&ti)
@@ -137,19 +170,19 @@ func (c *Client) InfoPushInit(tc targetinfo.TargetServiceClient) {
 // InfoPushResultRecv result
 func (c *Client) InfoPushResultRecv(allStr targetinfo.TargetService_TargetInfoReportClient) {
 	for {
-		resp, err := allStr.Recv()
+		_, err := allStr.Recv()
 		if err != nil {
 			log.Println(err.Error())
 			break
 		}
-		log.Println("recv --> ", resp.GetMessage())
+		// log.Println("recv --> ", resp.GetMessage())
 	}
 }
 
 // HeartBeatInit heart beat
 func (c *Client) HeartBeatInit(tc targetinfo.TargetServiceClient) {
 	hbClient, err := tc.TargetHeartBeat(context.Background())
-	log.Println("hbClient --> ", hbClient)
+	// log.Println("hbClient --> ", hbClient)
 	if err != nil {
 		log.Println(err.Error())
 	}
@@ -167,12 +200,12 @@ func (c *Client) HeartBeatInit(tc targetinfo.TargetServiceClient) {
 func (c *Client) HeartBeatResultRecv(hc targetinfo.TargetService_TargetHeartBeatClient) {
 	for {
 		// log.Println("hc -->", hc)
-		hb, err := hc.Recv()
+		_, err := hc.Recv()
 		if err != nil {
 			log.Println(err.Error())
 			break
 		}
-		log.Println(hb.String())
+		// log.Println(hb.String())
 	}
 }
 

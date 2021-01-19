@@ -1,2 +1,2 @@
-serv_port: ":23330"
-client_key: "an_union_client_key"
+serv_port: "127.0.0.1:23330"
+client_key: "an_union_client_key-1"

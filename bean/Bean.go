@@ -41,7 +41,9 @@ func (is *EyeServer) TargetInfoReport(ts targetinfo.TargetService_TargetInfoRepo
 		// log.Println("from --> ", ti.HostKey, " --> ", ti.GetCPUpr())
 
 		is.StatusOfTargets[ti.HostKey] = append(is.StatusOfTargets[ti.HostKey], *ti)
-		is.StatusOfTargets[ti.HostKey] = is.StatusOfTargets[ti.HostKey][:1]
+		if len(is.StatusOfTargets[ti.HostKey]) == 10 {
+			is.StatusOfTargets[ti.HostKey] = is.StatusOfTargets[ti.HostKey][1:]
+		}
 
 		ts.Send(&targetinfo.Response{
 			Message: strconv.Itoa((int(ti.GetCPUs()) + 1)),
@@ -100,11 +102,10 @@ func (es *EyeServer) InitHeartBeatManager() {
 
 func (is *EyeServer) InitServ(configPath string) {
 
-	go is.InitHttpServ()
-
 	go is.InitHeartBeatManager()
 
 	is.readConfig(configPath)
+	go is.InitHttpServ()
 
 	//监听端口
 	lis, err := net.Listen("tcp", is.Conf.Port)
@@ -122,6 +123,7 @@ func (is *EyeServer) InitServ(configPath string) {
 
 func (es *EyeServer) InitHttpServ() {
 	es.HttpServ = gin.Default()
+	log.Println("http port --> ", es.Conf.HTTPPort)
 
 	yog := es.HttpServ.Group("/yog")
 	{
@@ -134,7 +136,6 @@ func (es *EyeServer) InitHttpServ() {
 		})
 	}
 
-	log.Println("http port --> ", es.Conf.HTTPPort)
 	err := es.HttpServ.Run(es.Conf.HTTPPort)
 	if err != nil {
 		log.Println(err.Error())
