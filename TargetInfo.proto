@@ -8,16 +8,26 @@ option go_package="./targetinfo";
 
 // User 服务及服务接口的定义
 service TargetService {
+    // report target info to server
     rpc TargetInfoReport(stream TargetInfo) returns (stream Response) {}
     // rpc TargetPush(TargetInfo) returns (stream TargetInfo) {}
+    // heart beat to keeplive
     rpc TargetHeartBeat(stream HeartBeat) returns (stream HeartBeat) {}
 }
 
+// heart beat package
 message HeartBeat {
     int64 BeatTime = 1;
     string HostKey = 2;
 }
 
+message NetStatus {
+    string Name = 1;
+    int64 ByteSend = 2;
+    int64 BytesRecv = 3;
+}
+
+// 
 message DiskStatus {
     int64 ReadBytes = 1;
     int64 WriteBytes = 2;
@@ -52,13 +62,15 @@ message TargetInfo {
     int64 UsedDisk = 14;
     int64 UsedPercentDisk = 15;
     repeated DiskStatus DiskStatus = 16;
-    NetIoCount NetIoCount = 17;
+    repeated NetStatus NetStatus = 17;
 
     string Ip = 18;
     string IpCountry = 19;
     string IpRegion = 20;
 
     string HostKey = 21;
+
+    int64 CheckTime = 22;
 }
 
 message Response {

@@ -1,6 +1,7 @@
-package bean
+package main
 
 import (
+	"flag"
 	"io/ioutil"
 	"log"
 	"net"
@@ -9,6 +10,7 @@ import (
 	"time"
 	"yogeye/targetinfo"
 
+	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
 	"google.golang.org/grpc"
 	"gopkg.in/yaml.v2"
@@ -28,10 +30,22 @@ type EyeServer struct {
 
 	HeartBeatMap map[string]int64
 
-	HttpServ *gin.Engine
+	// for rest data interface
+	HTTPServ *gin.Engine
 }
 
-func (is *EyeServer) TargetInfoReport(ts targetinfo.TargetService_TargetInfoReportServer) error {
+type StatusResp struct {
+	Name string                  `json:"name"`
+	List []targetinfo.TargetInfo `json:"list"`
+}
+
+type HeartBeatResp struct {
+	Name     string `json:"name"`
+	BeatTime int64  `json:"beat_time"`
+}
+
+// TargetInfoReport accept machine status from client
+func (es *EyeServer) TargetInfoReport(ts targetinfo.TargetService_TargetInfoReportServer) error {
 	for {
 		ti, err := ts.Recv()
 		if err != nil {
@@ -40,9 +54,9 @@ func (is *EyeServer) TargetInfoReport(ts targetinfo.TargetService_TargetInfoRepo
 		}
 		// log.Println("from --> ", ti.HostKey, " --> ", ti.GetCPUpr())
 
-		is.StatusOfTargets[ti.HostKey] = append(is.StatusOfTargets[ti.HostKey], *ti)
-		if len(is.StatusOfTargets[ti.HostKey]) == 10 {
-			is.StatusOfTargets[ti.HostKey] = is.StatusOfTargets[ti.HostKey][1:]
+		es.StatusOfTargets[ti.HostKey] = append(es.StatusOfTargets[ti.HostKey], *ti)
+		if len(es.StatusOfTargets[ti.HostKey]) == 10 {
+			es.StatusOfTargets[ti.HostKey] = es.StatusOfTargets[ti.HostKey][1:]
 		}
 
 		ts.Send(&targetinfo.Response{
@@ -51,6 +65,7 @@ func (is *EyeServer) TargetInfoReport(ts targetinfo.TargetService_TargetInfoRepo
 	}
 }
 
+// TargetHeartBeat heart beat recv
 func (es *EyeServer) TargetHeartBeat(hb targetinfo.TargetService_TargetHeartBeatServer) error {
 	for {
 		hearBeat, err := hb.Recv()
@@ -65,7 +80,7 @@ func (es *EyeServer) TargetHeartBeat(hb targetinfo.TargetService_TargetHeartBeat
 	}
 }
 
-func (is *EyeServer) readConfig(config string) {
+func (es *EyeServer) readConfig(config string) {
 	yamlFile, err := ioutil.ReadFile(config)
 	if err != nil {
 		log.Println("加载配置文件失败,", err.Error())
@@ -77,7 +92,7 @@ func (is *EyeServer) readConfig(config string) {
 		log.Println("解析配置文件失败,", err.Error())
 		return
 	}
-	is.Conf = cnf
+	es.Conf = cnf
 }
 
 func (es *EyeServer) InitHeartBeatManager() {
@@ -97,44 +112,77 @@ func (es *EyeServer) InitHeartBeatManager() {
 	}
 }
 
-func (is *EyeServer) InitServ(configPath string) {
+// InitServ init whole server
+func (es *EyeServer) InitServ(configPath string) {
 
-	go is.InitHeartBeatManager()
+	go es.InitHeartBeatManager()
 
-	is.readConfig(configPath)
-	go is.InitHttpServ()
+	es.readConfig(configPath)
+	go es.InitHttpServ()
 
-	//监听端口
-	lis, err := net.Listen("tcp", is.Conf.Port)
+	// open rpc port
+	lis, err := net.Listen("tcp", es.Conf.Port)
 	if err != nil {
 		log.Println(err.Error())
 		return
 	}
-	//创建一个grpc 服务器
 	s := grpc.NewServer()
-	//注册事件
-	targetinfo.RegisterTargetServiceServer(s, is)
-	//处理链接
+	targetinfo.RegisterTargetServiceServer(s, es)
 	s.Serve(lis)
 }
 
+// InitHttpServ rest server
 func (es *EyeServer) InitHttpServ() {
-	es.HttpServ = gin.Default()
+	es.HTTPServ = gin.Default()
+	es.HTTPServ.Use(cors.Default())
 	log.Println("http port --> ", es.Conf.HTTPPort)
 
-	yog := es.HttpServ.Group("/yog")
+	es.HTTPServ.Static("/yog/static", "./frontend")
+
+	yog := es.HTTPServ.Group("/yog")
 	{
 		yog.GET("/status", func(c *gin.Context) {
-			c.JSON(http.StatusOK, es.StatusOfTargets)
+
+			var statusResp []StatusResp
+			for k, v := range es.StatusOfTargets {
+				var stastatus StatusResp
+				stastatus.Name = k
+				stastatus.List = v
+				statusResp = append(statusResp, stastatus)
+			}
+
+			c.JSON(http.StatusOK, statusResp)
 		})
 
 		yog.GET("/hearts", func(c *gin.Context) {
-			c.JSON(http.StatusOK, es.HeartBeatMap)
+			var hbResp []HeartBeatResp
+			for k, v := range es.HeartBeatMap {
+				var hb HeartBeatResp
+				hb.Name = k
+				hb.BeatTime = v
+				hbResp = append(hbResp, hb)
+			}
+			c.JSON(http.StatusOK, hbResp)
 		})
 	}
 
-	err := es.HttpServ.Run(es.Conf.HTTPPort)
+	err := es.HTTPServ.Run(es.Conf.HTTPPort)
 	if err != nil {
 		log.Println(err.Error())
 	}
+}
+
+var serverConfig = flag.String("f", "./server.yaml", "EyeServer Config Path")
+
+func main() {
+
+	flag.Parse()
+	log.Println("config file --> ", *serverConfig)
+
+	serv := EyeServer{
+		StatusOfTargets: make(map[string][]targetinfo.TargetInfo),
+	}
+
+	serv.InitServ(*serverConfig)
+
 }

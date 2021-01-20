@@ -91,12 +91,14 @@ func (c *Client) InfoPushInit(tc targetinfo.TargetServiceClient) {
 
 		ioc, _ := net.IOCounters(false)
 		// log.Println(ioc)
-		var netInfo *targetinfo.NetIoCount
-		if len(ioc) > 0 {
-			netInfo = &targetinfo.NetIoCount{
-				ByteSend:  int64(ioc[0].BytesSent),
-				BytesRecv: int64(ioc[0].BytesRecv),
+		var ns []*targetinfo.NetStatus
+		for _, ni := range ioc {
+			netInfo := &targetinfo.NetStatus{
+				Name:      ni.Name,
+				ByteSend:  int64(ni.BytesSent),
+				BytesRecv: int64(ni.BytesRecv),
 			}
+			ns = append(ns, netInfo)
 		}
 
 		resp, httpErr := http.Get("http://ip-api.com/json/?lang=zh-CN")
@@ -155,13 +157,15 @@ func (c *Client) InfoPushInit(tc targetinfo.TargetServiceClient) {
 			UsedPercentDisk: int64(disks.UsedPercent),
 			FreeDisk:        int64(disks.Free),
 			DiskStatus:      diskS,
-			NetIoCount:      netInfo,
+			NetStatus:       ns,
 
 			Ip:        ipS.Query,
 			IpCountry: ipS.Country,
 			IpRegion:  ipS.RegionName,
 
 			HostKey: c.ClientConf.ClientKey,
+
+			CheckTime: time.Now().Unix(),
 		}
 		allStr.Send(&ti)
 		time.Sleep(time.Second * 10)
