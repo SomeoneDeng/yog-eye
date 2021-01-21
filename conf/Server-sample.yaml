@@ -2,3 +2,9 @@ port: ":23330"
 http_port: ":23339"
 
 client_expire: 30
+
+
+jwt:
+  sign_key: "test"
+  expire: 7
+  admin_key: "test"

@@ -11,8 +11,14 @@ function main() {
         $.ajax({
             url: "../status",
             
-            success: function (resp) {
-                // console.log(resp);
+            success: function (resp, statusCode, xhr) {
+                
+                if (resp == 403) {
+                    location.href = './login.html';
+                    return
+                }
+
+                console.log(resp);
                 if (resp == null) return;
                 resp.sort(function (a, b) {
                     return a.name.localeCompare(b.name)
@@ -78,7 +84,7 @@ function main() {
                         )
                     )
                 }
-            }
+            },
         })
     }
 

@@ -7,19 +7,31 @@ import (
 	"net"
 	"net/http"
 	"strconv"
+	"strings"
 	"time"
 	"yogeye/targetinfo"
 
+	"github.com/dgrijalva/jwt-go"
 	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
 	"google.golang.org/grpc"
 	"gopkg.in/yaml.v2"
 )
 
+type JwtConfig struct {
+	SignKey string `yaml:"sign_key"`
+	// day
+	Expire int `yaml:"expire"`
+
+	AdminKey string `yaml:"admin_key"`
+}
+
 type ServerConfig struct {
 	Port         string `yaml:"port"`
 	HTTPPort     string `yaml:"http_port"`
 	ClientExpire int    `yaml:"client_expire"`
+
+	JwtCfg JwtConfig `yaml:"jwt"`
 }
 
 type EyeServer struct {
@@ -138,6 +150,41 @@ func (es *EyeServer) InitHttpServ() {
 	log.Println("http port --> ", es.Conf.HTTPPort)
 
 	es.HTTPServ.Static("/yog/static", "./frontend")
+	es.HTTPServ.Use(func(c *gin.Context) {
+		log.Println(c.Request.URL)
+
+		if strings.HasSuffix(c.Request.URL.Path, "login") || strings.HasSuffix(c.Request.URL.Path, "login.html") {
+			c.Next()
+			return
+		}
+		authJwt, err := c.Cookie("auth")
+		if err != nil {
+			log.Println("to login")
+			log.Println(err.Error())
+			c.JSON(http.StatusOK, 403)
+			c.Abort()
+			return
+		}
+		if authJwt == "" {
+			log.Println("to login")
+			c.Redirect(http.StatusTemporaryRedirect, "/yog/static/login.html")
+			return
+		}
+
+		tk, err := jwt.Parse(authJwt, func(t *jwt.Token) (interface{}, error) {
+			return []byte(es.Conf.JwtCfg.SignKey), nil
+		})
+		if err != nil {
+			log.Println("to login")
+			log.Println(err.Error())
+			c.JSON(http.StatusOK, 403)
+			c.Abort()
+			return
+		}
+		log.Println(tk.Claims)
+
+		c.Next()
+	})
 
 	yog := es.HTTPServ.Group("/yog")
 	{
@@ -163,6 +210,30 @@ func (es *EyeServer) InitHttpServ() {
 				hbResp = append(hbResp, hb)
 			}
 			c.JSON(http.StatusOK, hbResp)
+		})
+
+		yog.GET("/login", func(c *gin.Context) {
+			c.Request.ParseForm()
+			adminKey, _ := c.GetQuery("adminKey")
+			log.Println("adminKey --> ", adminKey, time.Now().Add(time.Hour*24*time.Duration(es.Conf.JwtCfg.Expire)).Unix())
+
+			if adminKey == es.Conf.JwtCfg.AdminKey {
+				token := jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.StandardClaims{
+					Issuer:    "admin",
+					ExpiresAt: time.Now().Add(time.Hour * 24 * time.Duration(es.Conf.JwtCfg.Expire)).Unix(),
+					Subject:   "user",
+				})
+				tokenString, err := token.SignedString([]byte(es.Conf.JwtCfg.SignKey))
+				if err != nil {
+					log.Println(err.Error())
+					c.JSON(http.StatusInternalServerError, make(map[string]string, 0))
+				}
+				c.SetCookie("auth", tokenString, 7*24*60*60, "/", "", false, true)
+				c.Redirect(http.StatusPermanentRedirect, "static/index.html")
+				// c.SetCookie("auth", tokenString, int(time.Hour)*24*7, "/", "", false, true)
+			} else {
+				c.Redirect(http.StatusPermanentRedirect, "static/login.html")
+			}
 		})
 	}
 
