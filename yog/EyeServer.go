@@ -30,6 +30,8 @@ type ServerConfig struct {
 	Port         string `yaml:"port"`
 	HTTPPort     string `yaml:"http_port"`
 	ClientExpire int    `yaml:"client_expire"`
+	// client password
+	Auth string `yaml:"auth"`
 
 	JwtCfg JwtConfig `yaml:"jwt"`
 }
@@ -62,9 +64,17 @@ func (es *EyeServer) TargetInfoReport(ts targetinfo.TargetService_TargetInfoRepo
 		ti, err := ts.Recv()
 		if err != nil {
 			time.Sleep(time.Second * 10)
-			log.Fatalln(err.Error())
+			log.Println(err.Error())
+			continue
 		}
 		// log.Println("from --> ", ti.HostKey, " --> ", ti.GetCPUpr())
+
+		if ti.AuthKey != es.Conf.Auth {
+			ts.Send(&targetinfo.Response{
+				Message: "error auth",
+			})
+			continue
+		}
 
 		es.StatusOfTargets[ti.HostKey] = append(es.StatusOfTargets[ti.HostKey], *ti)
 		if len(es.StatusOfTargets[ti.HostKey]) == 10 {
@@ -83,7 +93,13 @@ func (es *EyeServer) TargetHeartBeat(hb targetinfo.TargetService_TargetHeartBeat
 		hearBeat, err := hb.Recv()
 		if err != nil {
 			time.Sleep(time.Second * 10)
-			log.Fatalln(err.Error())
+			log.Println(err.Error())
+			continue
+		}
+		if hearBeat.AuthKey != es.Conf.Auth {
+			hearBeat.BeatTime = time.Now().Unix()
+			hb.Send(hearBeat)
+			continue
 		}
 		// log.Println("收到心跳 --> ", hearBeat.GetHostKey(), "[", hearBeat.GetBeatTime(), "]")
 		es.HeartBeatMap[hearBeat.GetHostKey()] = hearBeat.GetBeatTime()
@@ -116,7 +132,7 @@ func (es *EyeServer) InitHeartBeatManager() {
 			if now-v > int64(es.Conf.ClientExpire) {
 				log.Println("client 「", k, "」 expired.")
 				delete(es.HeartBeatMap, k)
-				delete(es.StatusOfTargets, k)
+				// delete(es.StatusOfTargets, k)
 			}
 		}
 		// check every 1 sec

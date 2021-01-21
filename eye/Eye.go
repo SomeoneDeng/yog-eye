@@ -22,6 +22,7 @@ import (
 type ClientConf struct {
 	ServPort  string `yaml:"serv_port"`
 	ClientKey string `yaml:"client_key"`
+	AuthKey   string `yaml:"auth"`
 }
 
 type Client struct {
@@ -166,9 +167,10 @@ func (c *Client) InfoPushInit(tc targetinfo.TargetServiceClient) {
 			HostKey: c.ClientConf.ClientKey,
 
 			CheckTime: time.Now().Unix(),
+			AuthKey:   c.ClientConf.AuthKey,
 		}
 		allStr.Send(&ti)
-		time.Sleep(time.Second * 10)
+		time.Sleep(time.Second * 4)
 	}
 }
 
@@ -196,6 +198,7 @@ func (c *Client) HeartBeatInit(tc targetinfo.TargetServiceClient) {
 		hbClient.Send(&targetinfo.HeartBeat{
 			HostKey:  c.ClientConf.ClientKey,
 			BeatTime: time.Now().Unix(),
+			AuthKey:  c.ClientConf.AuthKey,
 		})
 		time.Sleep(time.Second * 1)
 	}

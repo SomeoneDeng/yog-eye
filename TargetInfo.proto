@@ -19,6 +19,7 @@ service TargetService {
 message HeartBeat {
     int64 BeatTime = 1;
     string HostKey = 2;
+    string AuthKey = 3;
 }
 
 message NetStatus {
@@ -71,6 +72,7 @@ message TargetInfo {
     string HostKey = 21;
 
     int64 CheckTime = 22;
+    string AuthKey = 23;
 }
 
 message Response {

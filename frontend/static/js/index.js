@@ -1,10 +1,28 @@
 function main() {
     // 状态
     var status = []
+    var alives = []
+
+
 
     function mainLoop() {
         GetStatus()
+        getalives = setInterval(GetAlive, 1000)
         getstatus = setInterval(GetStatus, 5000)
+    }
+
+    function GetAlive() {
+        $.ajax({
+            url: '../hearts',
+            success: function(resp) {
+                if (resp == 403) {
+                    location.href = './login.html';
+                    return
+                }
+                console.log(resp);
+                alives = resp
+            }
+        })
     }
 
     function GetStatus() {
@@ -24,10 +42,16 @@ function main() {
                     return a.name.localeCompare(b.name)
                 })
                 status = resp
+
+
+                let aliveNames = alives.map(a => a.name)
+
+
                 $('#target-list').html('')
                 $('#target-list')
                 .append(
                     $("<tr></tr>")
+                    .append($('<th class="target-header"></th>').text('状态'))
                     .append($('<th class="target-header"></th>').text('主机'))
                     .append($('<th class="target-header"></th>').text('地址'))
                     .append($('<th class="target-header"></th>').text('地区'))
@@ -41,13 +65,14 @@ function main() {
                     .append($('<th class="target-header"></th>').text('读'))
                     .append($('<th class="target-header"></th>').text('写'))
                     .append($('<th class="target-header"></th>').text('cpu')))
-                for (var ti of resp) {
+                for (var ti of status) {
                     let lastStatus = ti.list[ti.list.length-1];
                     let lastStatusPre = ti.list[ti.list.length-2];
 
                     $('#target-list')
                         .append(
                             $('<tr class="target-item-row"></tr>')
+                            .append($('<td class="target-col-item"></td>').text(aliveNames.indexOf(ti.name) == -1 ? "离线" : "在线"))
                             .append($('<td class="target-col-item"></td>').text(ti.name))
                             .append($('<td class="target-col-item"></td>').text(lastStatus.Ip))
                             .append($('<td class="target-col-item"></td>').text(lastStatus.IpCountry))

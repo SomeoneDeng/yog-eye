@@ -3,6 +3,8 @@ http_port: ":23339"
 
 client_expire: 30
 
+auth: "test"
+
 
 jwt:
   sign_key: "test"
