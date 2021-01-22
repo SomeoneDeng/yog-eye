@@ -2,6 +2,7 @@ function main() {
     // 状态
     var status = []
     var alives = []
+    var firstLoadALive = true
 
 
 
@@ -21,6 +22,8 @@ function main() {
                 }
                 console.log(resp);
                 alives = resp
+                if (resp == null) alives = []
+                firstLoadALive = false;
             }
         })
     }
@@ -72,7 +75,12 @@ function main() {
                     $('#target-list')
                         .append(
                             $('<tr class="target-item-row"></tr>')
-                            .append($('<td class="target-col-item"></td>').text(aliveNames.indexOf(ti.name) == -1 ? "离线" : "在线"))
+                            .append($('<td class="target-col-item"></td>').append(
+                                    aliveNames.indexOf(ti.name) == -1 ?
+                                        $('<span style="color:red;"></span>').text("离线") :
+                                        $('<span style="color:teal;"></span>').text("在线")
+                                )
+                            )
                             .append($('<td class="target-col-item"></td>').text(ti.name))
                             .append($('<td class="target-col-item"></td>').text(lastStatus.Ip))
                             .append($('<td class="target-col-item"></td>').text(lastStatus.IpCountry))
